@@ -1,4 +1,5 @@
 #!/usr/bin/ruby
+# -*- coding: utf-8 -*-
 
 require 'gtk2'
 
@@ -72,15 +73,21 @@ class Balloon < ShapedWindow
     tmp = ""
 
     text.each_char { |char|
-      # 描画した時の幅を取得
-      txext = cc.text_extents( tmp + char );
-
-      # 吹き出しからはみ出す場合は改行する
-      if txext.width > 300 then
+      # 改行
+      if char == "\n" then
         result << tmp
-        tmp = char
+        tmp = ""
       else
-        tmp = tmp + char
+        # 描画した時の幅を取得
+        txext = cc.text_extents( tmp + char );
+
+        # 吹き出しからはみ出す場合は改行する
+        if txext.width > 300 then
+          result << tmp
+          tmp = char
+        else
+          tmp = tmp + char
+        end
       end
     }
 
@@ -100,6 +107,7 @@ class Balloon < ShapedWindow
     @owner = owner
     @text = text
     @row = 0
+    @start = 0
     @pointer = 0
     @extracted_text = nil
     @signal = nil
@@ -150,6 +158,10 @@ class Balloon < ShapedWindow
         @row = @row + 1
         @pointer = 0
 
+        if @row - @start == 5 then
+          @start = @start + 1
+        end
+
         # 表示完了
         if @row == @extracted_text.length 
 
@@ -189,8 +201,12 @@ class Balloon < ShapedWindow
     end
 
     # 表示済みの行を一気に描画
-    (0..@row - 1).each { |i|
-      cc.show_text(@extracted_text[i])
+p @start
+p @row
+p @extracted_text[@row]
+p ""
+    (0..(@row - @start) - 1).each { |i|
+      cc.show_text(@extracted_text[@start + i])
       cc.move_to(16, 22 + (16 * (i + 1)))
     }
 
@@ -230,7 +246,9 @@ shape = ShapedWindow.new("surface10.png")
 
 fall_toshi_a(shape) { |toshi_a|
   GLib::Timeout.add(500){
-    balloon = Balloon.new(toshi_a ,"balloonk1.png","balloonk0.png","This is test..............................asd1234567890asdsdadsdaxxxa................................................")
+    balloon = Balloon.new(toshi_a ,"balloonk1.png","balloonk0.png","48枚もの16GB DIMMを搭載し、768GBという大容量メモリを実現したハイエンドサーバーがPC DIY SHOP FreeTで展示中だ。\n\n 停止状態で展示されているが、実際に動作させることも可能という。
+\n")
+#    balloon = Balloon.new(toshi_a ,"balloonk1.png","balloonk0.png","This is test\n..............................asd1234567890asdsdadsdaxxxa................................................abcdefghijklmnopqrstuvwxyg12345678901234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890abcdefghijklmnopqrstuvwxyz")
     balloon.show
 
     false
