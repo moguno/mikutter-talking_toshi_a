@@ -100,6 +100,7 @@ class Balloon < ShapedWindow
     @owner = owner
     @text = text
     @row = 0
+    @start = 0
     @pointer = 0
     @extracted_text = nil
     @signal = nil
@@ -150,6 +151,10 @@ class Balloon < ShapedWindow
         @row = @row + 1
         @pointer = 0
 
+        if @row - @start == 5 then
+          @start = @start + 1
+        end
+
         # 表示完了
         if @row == @extracted_text.length 
 
@@ -189,8 +194,12 @@ class Balloon < ShapedWindow
     end
 
     # 表示済みの行を一気に描画
-    (0..@row - 1).each { |i|
-      cc.show_text(@extracted_text[i])
+p @start
+p @row
+p @extracted_text[@row]
+p ""
+    (0..(@row - @start) - 1).each { |i|
+      cc.show_text(@extracted_text[@start + i])
       cc.move_to(16, 22 + (16 * (i + 1)))
     }
 
@@ -230,7 +239,7 @@ shape = ShapedWindow.new("surface10.png")
 
 fall_toshi_a(shape) { |toshi_a|
   GLib::Timeout.add(500){
-    balloon = Balloon.new(toshi_a ,"balloonk1.png","balloonk0.png","This is test..............................asd1234567890asdsdadsdaxxxa................................................")
+    balloon = Balloon.new(toshi_a ,"balloonk1.png","balloonk0.png","This is test..............................asd1234567890asdsdadsdaxxxa................................................abcdefghijklmnopqrstuvwxyg12345678901234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890abcdefghijklmnopqrstuvwxyz")
     balloon.show
 
     false
