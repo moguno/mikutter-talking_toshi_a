@@ -102,6 +102,8 @@ class Balloon < ShapedWindow
     @row = 0
     @pointer = 0
     @extracted_text = nil
+    @signal = nil
+    @is_left = false
 
     super(image_l)
 
@@ -109,30 +111,31 @@ class Balloon < ShapedWindow
     self.move(@owner.position[0] + @owner.size[0], (@owner.size[1] - self.size[1]) / 2 + @owner.position[1])
 
     # 親ウインドウがクリックされた
-    @owner.signal_connect("configure-event") { |owner, event|
+    @signal = @owner.signal_connect("configure-event") { |owner, event|
    
       # 画面右に吹き出し表示スペースがない
-      if ((@owner.position[0] + @owner.size[0]) + self.size[0] > screen.width) then
+      if (!@is_left || ((@owner.position[0] + @owner.size[0]) + self.size[0] > screen.width)) then
         # 親ウインドウの左サイドに移動する
         load_image(@image_r)
         self.move(owner.position[0] - self.size[0], (event.height - self.size[1]) / 2 + event.y)
+
+        @is_left = false
       end
 
       # 画面左に吹き出し表示スペースがない
-      if (@owner.position[0] < self.size[0]) then
+      if (@is_left || (@owner.position[0] < self.size[0])) then
         # 親ウインドウの右サイドに移動する
         load_image(@image_l)
         self.move(event.x + event.width, (event.height - self.size[1]) / 2 + event.y)
+
+        @is_left = true
       end
 
       true
     }
 
-    self.signal_connect("destroy") {
-p "destroy"
-      @owner.signal_connect("configure-event") {
-        true
-      }
+    signal_connect("destroy") {
+      @owner.signal_handler_disconnect(@signal)
     }
 
     # メッセージを1文字ずつ表示する
@@ -192,7 +195,9 @@ p "destroy"
     }
 
     # 表示すべき文字まで描画
-    cc.show_text(@extracted_text[@row][0..@pointer])
+    if @extracted_text[@row] != nil then
+     cc.show_text(@extracted_text[@row][0..@pointer])
+    end
   end
 end
 
