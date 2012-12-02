@@ -435,7 +435,6 @@ Plugin.create :toshi_a_talk do
     begin
       if !$toshi_a.empty? then
         msg = $toshi_a.fetch
-        reply = msg.receive_message
 
         $talk_queue.push(msg)
 
@@ -488,7 +487,7 @@ Plugin.create :toshi_a_talk do
       Thread.stop
 
       while !queue.empty?
-        msg = queue.pop
+        msg = queue.shift
 
         reply = msg.receive_message 
 
