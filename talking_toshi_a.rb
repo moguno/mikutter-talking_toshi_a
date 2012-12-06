@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 require 'gtk2'
+
 # 非矩形クラス
 class ShapedWindow < Gtk::Window
   include Math
@@ -19,11 +20,13 @@ class ShapedWindow < Gtk::Window
 
     # 再描画が必要なときに発行されるシグナル
     # 初めに起動したときにも発行される
-    signal_connect("expose-event") do 
+    signal_connect("expose-event") do
       # cairoで扱うコンテキストをwindowから取得
       cc = self.window.create_cairo_context
+
       # コンテキストを元に表示
       draw(cc)
+
       true
     end
   end
@@ -34,21 +37,22 @@ class ShapedWindow < Gtk::Window
     @pixbuf = Gdk::Pixbuf.new(image)
     @w = @pixbuf.width
     @h = @pixbuf.height
-    
+   
     self.set_default_size(@w, @h)
     self.set_shape_mask
   end
 
-  
+
   # 透過処理
   def set_shape_mask
     bitmap = Gdk::Pixmap.new(nil, @w, @h, 1)
     cc = bitmap.create_cairo_context
     draw(cc)
-    
+   
     self.shape_combine_mask(bitmap, 0, 0)
   end
-  
+
+
   # 描画する
   def draw(cc)
 
@@ -68,6 +72,15 @@ end
 # 吹き出し
 class Balloon < ShapedWindow
 
+  # フォントの設定
+  def setting_font(cc)
+    cc.antialias = Cairo::ANTIALIAS_SUBPIXEL
+    cc.set_source_rgb(0.3,0.3,0.3)
+    cc.font_size = 14
+    cc.select_font_face("Sans", Cairo::FONT_SLANT_NORMAL, Cairo::FONT_WEIGHT_NORMAL);
+  end
+
+
   # テキストを表示しやすいように分割する
   def extract_text(cc, text)
     result = []
@@ -80,6 +93,7 @@ class Balloon < ShapedWindow
         tmp = ""
       else
         # 描画した時の幅を取得
+        setting_font(cc)
         txext = cc.text_extents( tmp + char );
 
         # 吹き出しからはみ出す場合は改行する
@@ -111,11 +125,7 @@ class Balloon < ShapedWindow
     self.show
 
     cc = self.window.create_cairo_context
-    cc.antialias = Cairo::ANTIALIAS_SUBPIXEL
-    cc.set_source_rgb(0.3,0.3,0.3)
-    cc.font_size = 14
-    cc.select_font_face("Sans", Cairo::FONT_SLANT_NORMAL, Cairo::FONT_WEIGHT_NORMAL);
-
+    setting_font(cc)
     @extracted_text = extract_text(cc, @text)
 
     # メッセージを1文字ずつ表示する
@@ -123,7 +133,7 @@ class Balloon < ShapedWindow
       pointer = @pointer + 1
       start = @start
       row = @row
-      
+     
       if @pointer >= @extracted_text[@row].length then
         row = row + 1
         pointer = 0
@@ -133,7 +143,7 @@ class Balloon < ShapedWindow
         end
 
         # 表示完了
-        if row == @extracted_text.length 
+        if row == @extracted_text.length
           break
         end
       end
@@ -143,9 +153,31 @@ class Balloon < ShapedWindow
       @row = row
 
       # ウインドウ描画
-      self.queue_draw()
+      self.queue_draw
 
       sleep(0.1)
+    end
+  end
+
+
+  # 吹き出しの場所を決定
+  def set_balloon_position()
+    # 画面右に吹き出し表示スペースがない
+    if (!@is_left || ((@owner.position[0] + @owner.size[0]) + self.size[0] > screen.width)) then
+      # 親ウインドウの左サイドに移動する
+      load_image(@image_r)
+      self.move(@owner.position[0] - self.size[0], (@owner.size[1] - self.size[1]) / 2 + @owner.position[1])
+
+      @is_left = false
+    end
+
+    # 画面左に吹き出し表示スペースがない
+    if (@is_left || (@owner.position[0] < self.size[0])) then
+      # 親ウインドウの右サイドに移動する
+      load_image(@image_l)
+      self.move(@owner.position[0] + @owner.size[0], (@owner.size[1] - self.size[1]) / 2 + @owner.position[1])
+
+      @is_left = true
     end
   end
 
@@ -165,49 +197,18 @@ class Balloon < ShapedWindow
 
     super(image_l)
 
-    # 画面右に吹き出し表示スペースがない
-    if (!@is_left || ((@owner.position[0] + @owner.size[0]) + self.size[0] > screen.width)) then
-      # 親ウインドウの左サイドに移動する
-      load_image(@image_r)
-      self.move(owner.position[0] - self.size[0], (owner.size[1] - self.size[1]) / 2 + owner.position[1])
-
-      @is_left = false
-    end
-
-    # 画面左に吹き出し表示スペースがない
-    if (@is_left || (@owner.position[0] < self.size[0])) then
-      # 親ウインドウの右サイドに移動する
-      load_image(@image_l)
-      self.move(owner.position[0] + owner.size[0], (owner.size[1] - self.size[1]) / 2 + owner.position[1])
-
-      @is_left = true
-    end
+    set_balloon_position()
 
     # 親ウインドウがクリックされた
     @signal = @owner.signal_connect("configure-event") { |owner, event|
-
-      # 画面右に吹き出し表示スペースがない
-      if (!@is_left || ((@owner.position[0] + @owner.size[0]) + self.size[0] > screen.width)) then
-        # 親ウインドウの左サイドに移動する
-        load_image(@image_r)
-        self.move(owner.position[0] - self.size[0], (event.height - self.size[1]) / 2 + event.y)
-
-        @is_left = false
-      end
-
-      # 画面左に吹き出し表示スペースがない
-      if (@is_left || (@owner.position[0] < self.size[0])) then
-        # 親ウインドウの右サイドに移動する
-        load_image(@image_l)
-        self.move(event.x + event.width, (event.height - self.size[1]) / 2 + event.y)
-
-        @is_left = true
-      end
+      set_balloon_position()
 
       false
     }
 
+    # 子ウインドウの廃棄
     signal_connect("destroy") {
+      # 親ウインドウのシグナルを削除する
       @owner.signal_handler_disconnect(@signal)
     }
 
@@ -220,15 +221,13 @@ class Balloon < ShapedWindow
     super(cc)
 
     # メッセージの表示
-    cc.antialias = Cairo::ANTIALIAS_SUBPIXEL
-    cc.set_source_rgb(0.3,0.3,0.3)
-    cc.font_size = 14
-    cc.select_font_face("Sans", Cairo::FONT_SLANT_NORMAL, Cairo::FONT_WEIGHT_NORMAL);
     cc.move_to(16, 22)
 
     if @extracted_text == nil then
-      return 
+      return
     end
+
+    setting_font(cc)
 
     # 表示済みの行を一気に描画
     (0..(@row - @start) - 1).each { |i|
@@ -238,32 +237,9 @@ class Balloon < ShapedWindow
 
     # 表示すべき文字まで描画
     if @extracted_text[@row] != nil then
-     cc.show_text(@extracted_text[@row][0..@pointer])
+      cc.show_text(@extracted_text[@row][0..@pointer])
     end
   end
-end
-
-
-# としぁさんを落下させる
-def fall_toshi_a(toshi_a, &block)
-  i = 0
-
-  GLib::Timeout.add(50){
-    toshi_a.move(32, i)
-    toshi_a.show
-
-    i = i + 20
-
-    if i > (Gdk::screen_height - toshi_a.size[1] ) then
-      toshi_a.move(32, (Gdk::screen_height - toshi_a.size[1] ))
-
-      block.call(toshi_a)
-
-      false
-    else
-      true
-    end
-  }
 end
 
 
@@ -271,7 +247,7 @@ end
 class Toshi_a
   attr_reader :last_fetch_time
 
-
+  # コンストラクタ
   def initialize(service)
     @service = service
     @queue_lock = Mutex.new
@@ -303,7 +279,7 @@ class Toshi_a
 
     if msg != nil then
       @last_fetch_time = Time.now
-    end 
+    end
 
     # puts @keywords.to_s + @result_queue.size.to_s
 
@@ -322,11 +298,11 @@ class Toshi_a
     keyword = "toshi_a"
 
     query_keyword = keyword.strip.rstrip.sub(/ +/,"+")
-  
+ 
     if query_keyword.empty? then
       return
     end
-  
+ 
     params = {}
 
     query_tmp = query_keyword + "+-rt+-via"
@@ -334,7 +310,7 @@ class Toshi_a
     if @last_result_time != nil then
       query_tmp = query_tmp + "+since:" + @last_result_time.strftime("%Y-%m-%d")
     end
-  
+ 
     params[:q] = query_tmp
 
     params[:rpp] = 500.to_s
@@ -342,16 +318,16 @@ class Toshi_a
     if query_keyword.empty? then
       return
     end
-  
+ 
     params[:lang] = "ja"
 
-    @service.search(params).next{ |res| 
+    @service.search(params).next{ |res|
       begin
         res = res.select { |es|
           result_tmp = false
 
           if es[:created_at].class == String then
-            tim = parse_time(es[:created_at]) 
+            tim = parse_time(es[:created_at])
           else
             p "mulformed created_at:"
             p es.class
@@ -386,21 +362,21 @@ class Toshi_a
         if res.size == 0 then
           next
         end
-  
-        res.each { |es| 
+ 
+        res.each { |es|
           # 一回アクセスしてキャッシュさせる
           reply = es.receive_message
 
           tim = parse_time(es[:created_at])
-  
+ 
           if tim != nil && (@last_result_time == nil || @last_result_time < tim) then
             @last_result_time = tim
           end
         }
-  
+ 
         # p "new message:" + res.size.to_s
         # p "last time:" + $last_time.to_s
-  
+ 
         @queue_lock.synchronize {
           # puts @keywords.to_s + res.size.to_s
           @result_queue.concat(res.reverse)
@@ -412,41 +388,35 @@ class Toshi_a
     }
   end
 end
-  
 
-Plugin.create :toshi_a_talk do 
-  
+
+Plugin.create :toshi_a_talk do
+ 
   # グローバル変数の初期化
   $toshi_a = nil
 
 
   # 検索用ループ
   def search_loop(service)
-    search_keyword(service) 
+    search_keyword(service)
 
     Reserver.new(UserConfig[:toshi_a_talk_period]){
       search_loop(service)
-    } 
+    }
   end
-  
+
 
   # 混ぜ込みループ
   def insert_loop(service)
     begin
       if !$toshi_a.empty? then
-        msg = $toshi_a.fetch
-
-        $talk_queue << msg
-
-        if $charactor_thread.stop? then
-          $charactor_thread.wakeup
-        end
+        $talk_queue.push($toshi_a.fetch)
       end
 
       Reserver.new(UserConfig[:toshi_a_talk_insert_period]){
         insert_loop(service)
-      } 
-        
+      }
+       
     rescue => e
       puts e
       puts e.backtrace
@@ -465,44 +435,29 @@ Plugin.create :toshi_a_talk do
   end
 
 
-  # 起こされても起きない
-  def please_sleep(sec)
-    sleep_sec = sec
-
-    while true do
-      # 残り時間分sleep
-      sleep_sec = sleep_sec - sleep(sleep_sec)
-     
-      if sleep_sec <= 0.0 then
-        break
-      end
-    end
-  end
-
-
   # としぁさん大暴れ！スレッド
   def charactor_thread(charactor, balloon_toshi_a, balloon_miku, queue)
     while true
       # キューを待つ
-      Thread.stop
+      sleep(1)
 
       while !queue.empty?
         msg = queue.shift
 
-        reply = msg.receive_message 
+        reply = msg.receive_message
 
         if reply != nil then
           balloon_miku.message("としぁさん。" + reply[:user][:name] + "さんがこんなこと言ってたよ。" + "\n\n" + reply[:message])
-          please_sleep(0.5)
+          sleep(3)
         end
 
         balloon_toshi_a.message(msg[:message])
-        please_sleep(3)
+        sleep(3)
 
         balloon_toshi_a.hide
         balloon_miku.hide
 
-        please_sleep(5)        
+        sleep(5)
       end
     end
   end
@@ -520,7 +475,7 @@ Plugin.create :toshi_a_talk do
     settings "おしゃべりとしぁさん" do
       adjustment("ポーリング間隔（秒）", :toshi_a_talk_period, 1, 6000)
       adjustment("混ぜ込み間隔（秒）", :toshi_a_talk_insert_period, 1, 600)
-    end 
+    end
 
     search_loop(service)
     insert_loop(service)
@@ -553,9 +508,6 @@ Plugin.create :toshi_a_talk do
 
     # としぁさんをメインスレッドの呪縛から解放する
     $charactor_thread = Thread.new {
-      # メインスレッドさんに逆らうと更新がリアルタイムで行われないから自重する。
-      $charactor_thread.priority = 1
-
       begin
         charactor_thread($charactor, $balloon_toshi_a, $balloon_mikutter, $talk_queue)
       rescue => e
@@ -585,4 +537,6 @@ def test
   Gtk::main()
 end
 
+
+ 
 
