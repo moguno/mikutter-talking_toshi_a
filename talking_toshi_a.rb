@@ -143,7 +143,7 @@ class Balloon < ShapedWindow
       @row = row
 
       # ウインドウ描画
-      self.queue_draw
+      self.queue_draw()
 
       sleep(0.1)
     end
@@ -436,7 +436,7 @@ Plugin.create :toshi_a_talk do
       if !$toshi_a.empty? then
         msg = $toshi_a.fetch
 
-        $talk_queue.push(msg)
+        $talk_queue << msg
 
         if $charactor_thread.stop? then
           $charactor_thread.wakeup
@@ -493,7 +493,7 @@ Plugin.create :toshi_a_talk do
 
         if reply != nil then
           balloon_miku.message("としぁさん。" + reply[:user][:name] + "さんがこんなこと言ってたよ。" + "\n\n" + reply[:message])
-          please_sleep(3)
+          please_sleep(0.5)
         end
 
         balloon_toshi_a.message(msg[:message])
@@ -553,6 +553,9 @@ Plugin.create :toshi_a_talk do
 
     # としぁさんをメインスレッドの呪縛から解放する
     $charactor_thread = Thread.new {
+      # メインスレッドさんに逆らうと更新がリアルタイムで行われないから自重する。
+      $charactor_thread.priority = 1
+
       begin
         charactor_thread($charactor, $balloon_toshi_a, $balloon_mikutter, $talk_queue)
       rescue => e
