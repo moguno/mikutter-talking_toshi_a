@@ -3,6 +3,55 @@
 
 require 'gtk2'
 
+
+$constant_chat =
+[
+[
+	[:miku, "としぁさん、mikutterとはなんなのでしょう！"],
+	[:toshi_a, "悪ふざけ。"],
+	[:miku, "え〜・・・？"]
+],
+[
+	[:toshi_a, "TLの流速が早い場合は、基本設定の「リアルタイム更新」を切ると良いみたいですね。\nRuby 1.9.2 以降\nCPU 気が短いならたくさん\nMemory ノーコメもありや\n人柱気質 少々\nユーモア このページを読んで気分を害さない程度"],
+	[:miku, "あっ、私の動作条件ですね。"]
+],
+[
+	[:toshi_a, "仕事のストレス\n 　　↘\n 　　mikutter捗る\n 　　↙\n mikutter捗る\n 　　　　↘\n 　　mikutter捗る\n 　　↙\n ＿人人人人人人人人＿\n ＞　mikutter捗る　＜\n ￣^Y^Y^Y^Y^Y^Y^Y^￣"],
+	[:miku, "私を使い始めたマスターもツイート数が増えました"]
+],
+[
+	[:miku, "mikutterで検索するとよくわからないものが出てくると、苦情をいただきました。"],
+	[:toshi_a, "組織の陰謀です。気にしないでください。 "]
+],
+[
+	[:toshi_a, "mikutterに足りないものは、それは！\n 情熱・思想・理念・頭脳・気品・優雅さ・勤勉さ！そしてなによりもォォォオオオオッ！！\n 速さが足りない！！ "],
+	[:miku, "私、重いですか・・・？ "]
+],
+[
+	[:toshi_a, "ｱｱｱｯmikutterをStableだと勘違いしてるｳｳｩｳｳwwwwwこの人はDL前からバージョン見てない情弱ﾌｯﾌｩwwwwwwwwwwwww２年も開発版のままのクライアントなんて使わなくてよかったｧｱwwwwwww "],
+	[:miku, "としぁさん。この前ちょっと失敗しちゃって、マスターに怒られｆｄｓうぇｆ８＠ん：９）（Hちゃいました"],
+	[:toshi_a, "あかん、ておくれや。"]
+],
+[
+	[:toshi_a, "RubyのプログラムではSegmentation Faultは発生しません。Rubyのプログラムがクラッシュしたときに[BUG]なんとかと表示されるのは、基本的にC等で書かれたライブラリやRuby自体がクラッシュした時です。\n Ruby自体はあんまりないけれど、mikutterではRubyGtkというライブラリが頻繁にクラッシュします。このエラーがよく発生するようなら、RubyGtkのバージョンを最新にするなどすれば状況が改善されたり悪化したりします。 "],
+	[:miku, "[BUG] Segumentation Faultっ♪"]
+],
+[
+	[:miku, "としぁさん。私のミク要素ってどこですか？ "],
+	[:toshi_a, "愚か者め…知らず知らずのうちに精神が蝕まれていることにも気づかないとは…。 "],
+	[:miku, "\nあんまり無いってことですね・・・。"]
+],
+[
+	[:toshi_a, "mikutterはArch Linuxで開発してます。他には、Ubuntuをはじめ、mikutterが動作する全ての環境で動作します。\n でも、twitterでは自分で確かめもせずに噂を信じちゃいけませんよ。"],
+	[:miku, "この環境は大丈夫ですね。"]
+],
+[
+	[:toshi_a, "toshi_aゎ走った…… ﾕｰｻﾞがまってる……\n\nでも……もぅつかれちゃった…\n\nでも…… あきらめるのょくなぃって……\n\ntoshi_aゎ……ぉもって……がんばった……\n\nでも……ruby…ｾｸﾞｯて……ﾓﾆｮぃょ……ｺﾞﾒﾝ……まにあわなかった……\n\nでも……mikutterとバグゎ……ズッ友だょ……！！"],
+	[:miku, "パッチも大歓迎ですよ？"]
+]
+]
+
+
 # 非矩形クラス
 class ShapedWindow < Gtk::Window
   include Math
@@ -409,8 +458,10 @@ Plugin.create :toshi_a_talk do
   # 混ぜ込みループ
   def insert_loop(service)
     begin
-      if !$toshi_a.empty? then
+      if !$toshi_a.empty? && rand(10) != 3 then
         $talk_queue.push($toshi_a.fetch)
+      else
+        $talk_queue.push($constant_chat[rand($constant_chat.length)])
       end
 
       Reserver.new(UserConfig[:toshi_a_talk_insert_period]){
@@ -444,15 +495,28 @@ Plugin.create :toshi_a_talk do
       while !queue.empty?
         msg = queue.shift
 
-        reply = msg.receive_message
+        if msg.class == Message then
+          reply = msg.receive_message
 
-        if reply != nil then
-          balloon_miku.message("としぁさん。" + reply[:user][:name] + "さんがこんなこと言ってたよ。" + "\n\n" + reply[:message])
+          if reply != nil then
+            balloon_miku.message("としぁさん。" + reply[:user][:name] + "さんがこんなこと言ってたよ。" + "\n\n" + reply[:message])
+            sleep(2)
+          end
+
+          balloon_toshi_a.message(msg[:message])
           sleep(3)
-        end
+        else
+          msg.each { |chat|
+            if chat[0] == :miku then
+              balloon_miku.message(chat[1])
+            else
+              balloon_toshi_a.message(chat[1])
+            end
 
-        balloon_toshi_a.message(msg[:message])
-        sleep(3)
+            sleep(2)
+          }
+
+        end
 
         balloon_toshi_a.hide
         balloon_miku.hide
