@@ -9,7 +9,7 @@ $constant_chat =
 [
 	[:miku, "としぁさん、mikutterとはなんなのでしょう！"],
 	[:toshi_a, "悪ふざけ。"],
-	[:miku, "え〜・・・？"]
+	[:miku, "\n\nえ〜・・・？"]
 ],
 [
 	[:toshi_a, "TLの流速が早い場合は、基本設定の「リアルタイム更新」を切ると良いみたいですね。\nRuby 1.9.2 以降\nCPU 気が短いならたくさん\nMemory ノーコメもありや\n人柱気質 少々\nユーモア このページを読んで気分を害さない程度"],
@@ -25,7 +25,7 @@ $constant_chat =
 ],
 [
 	[:toshi_a, "mikutterに足りないものは、それは！\n 情熱・思想・理念・頭脳・気品・優雅さ・勤勉さ！そしてなによりもォォォオオオオッ！！\n 速さが足りない！！ "],
-	[:miku, "私、重いですか・・・？ "]
+	[:miku, "\n\n私、重いですか・・・？ "]
 ],
 [
 	[:toshi_a, "ｱｱｱｯmikutterをStableだと勘違いしてるｳｳｩｳｳwwwwwこの人はDL前からバージョン見てない情弱ﾌｯﾌｩwwwwwwwwwwwww２年も開発版のままのクライアントなんて使わなくてよかったｧｱwwwwwww "],
@@ -34,12 +34,12 @@ $constant_chat =
 ],
 [
 	[:toshi_a, "RubyのプログラムではSegmentation Faultは発生しません。Rubyのプログラムがクラッシュしたときに[BUG]なんとかと表示されるのは、基本的にC等で書かれたライブラリやRuby自体がクラッシュした時です。\n Ruby自体はあんまりないけれど、mikutterではRubyGtkというライブラリが頻繁にクラッシュします。このエラーがよく発生するようなら、RubyGtkのバージョンを最新にするなどすれば状況が改善されたり悪化したりします。 "],
-	[:miku, "[BUG] Segumentation Faultっ♪"]
+	[:miku, "\n\nしぐ！　せぐ！　ぶいっ♪"]
 ],
 [
 	[:miku, "としぁさん。私のミク要素ってどこですか？ "],
 	[:toshi_a, "愚か者め…知らず知らずのうちに精神が蝕まれていることにも気づかないとは…。 "],
-	[:miku, "\nあんまり無いってことですね・・・。"]
+	[:miku, "\n\nあんまり無いってことですね・・・。"]
 ],
 [
 	[:toshi_a, "mikutterはArch Linuxで開発してます。他には、Ubuntuをはじめ、mikutterが動作する全ての環境で動作します。\n でも、twitterでは自分で確かめもせずに噂を信じちゃいけませんよ。"],
@@ -47,7 +47,7 @@ $constant_chat =
 ],
 [
 	[:toshi_a, "toshi_aゎ走った…… ﾕｰｻﾞがまってる……\n\nでも……もぅつかれちゃった…\n\nでも…… あきらめるのょくなぃって……\n\ntoshi_aゎ……ぉもって……がんばった……\n\nでも……ruby…ｾｸﾞｯて……ﾓﾆｮぃょ……ｺﾞﾒﾝ……まにあわなかった……\n\nでも……mikutterとバグゎ……ズッ友だょ……！！"],
-	[:miku, "パッチも大歓迎ですよ？"]
+	[:miku, "誰かがパッチを送ってくれるといいですね。"]
 ]
 ]
 
@@ -61,6 +61,9 @@ class ShapedWindow < Gtk::Window
   def initialize(image)
     super(Gtk::Window::TOPLEVEL)
 
+    self.app_paintable = true
+    self.double_buffered = false
+
     self.type_hint = Gdk::Window::TYPE_HINT_SPLASHSCREEN
 
     self.keep_above = true
@@ -70,11 +73,13 @@ class ShapedWindow < Gtk::Window
     # 再描画が必要なときに発行されるシグナル
     # 初めに起動したときにも発行される
     signal_connect("expose-event") do
-      # cairoで扱うコンテキストをwindowから取得
-      cc = self.window.create_cairo_context
+      Gdk::Threads::synchronize {
+        # cairoで扱うコンテキストをwindowから取得
+        cc = self.window.create_cairo_context
 
-      # コンテキストを元に表示
-      draw(cc)
+        # コンテキストを元に表示
+        draw(cc)
+      }
 
       true
     end
@@ -328,6 +333,8 @@ class Toshi_a
 
     if msg != nil then
       @last_fetch_time = Time.now
+    else
+      @last_result_time = nil
     end
 
     # puts @keywords.to_s + @result_queue.size.to_s
@@ -458,7 +465,7 @@ Plugin.create :toshi_a_talk do
   # 混ぜ込みループ
   def insert_loop(service)
     begin
-      if !$toshi_a.empty? && rand(10) != 3 then
+      if !$toshi_a.empty? && rand(20) >= 3 then
         $talk_queue.push($toshi_a.fetch)
       else
         $talk_queue.push($constant_chat[rand($constant_chat.length)])
@@ -502,6 +509,7 @@ Plugin.create :toshi_a_talk do
             balloon_miku.message("としぁさん。" + reply[:user][:name] + "さんがこんなこと言ってたよ。" + "\n\n" + reply[:message])
             sleep(2)
           end
+
 
           balloon_toshi_a.message(msg[:message])
           sleep(3)
